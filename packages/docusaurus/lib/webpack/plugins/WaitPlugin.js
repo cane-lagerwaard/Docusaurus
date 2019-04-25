@@ -11,21 +11,26 @@ const chokidar = require('chokidar');
 class WaitPlugin {
   constructor(options) {
     this.filepath = options.filepath;
+    this.watcher = chokidar.watch(this.filepath, {
+        awaitWriteFinish: true,
+        disableGlobbing: true,
+      });
   }
+
+  closeWatcher() {
+     this.watcher.close();
+   }
 
   apply(compiler) {
     // Before finishing the compilation step
     compiler.hooks.make.tapAsync('WaitPlugin', (compilation, callback) => {
-      const {filepath} = this;
-      const watcher = chokidar.watch(filepath, {
-        awaitWriteFinish: true,
-        disableGlobbing: true,
-      });
+      const {filepath, watcher} = this;
+      
 
-      ['all'].forEach(event => {
+      ['add'].forEach(event => {
         watcher.on(event, () => {
           if (fs.existsSync(filepath)) {
-            watcher.close();
+            this.closeWatcher();
             callback();
           }
         });
